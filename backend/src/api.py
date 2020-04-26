@@ -30,13 +30,11 @@ db_drop_and_create_all()
 
 
 @app.route('/drinks')
-#@requires_auth
 def get_drinks():
     drinks = Drink.query.all()
-    print(drinks)
-    #print(jwt)
-    #if len(drinks) == 0:
-        #abort(404)
+
+    if len(drinks) == 0:
+        abort(404)
 
     drinks_shorts = [drink.short() for drink in drinks]
     return jsonify({
@@ -57,11 +55,14 @@ def get_drinks():
 
 @app.route('/drinks-detail')
 @requires_auth('get:drinks-detail')
-def get_drinks_details():
-    print('hit end point drink details')
+def get_drinks_details(jwt):
+    drinks = Drink.query.all()
+
+    drink_long = [drink.long() for drink in drinks]
+    print(jwt)
     return jsonify({
         'success': True,
-        # 'drinks': drinks
+        'drinks': drink_long
     })
 
 
@@ -77,10 +78,22 @@ def get_drinks_details():
 
 
 @app.route('/drinks', methods=['POST'])
-def create_drink():
+@requires_auth("post:drinks")
+def create_drink(jwt):
+    body = request.get_json()
+    title = body['title']
+    recipe = body['recipe']
+
+    new_drink = Drink(title=title, recipe=json.dumps(recipe))
+
+    try:
+        new_drink.insert()
+    except Exception as e:
+        abort(422)
+
     return jsonify({
         'success': True,
-        # 'drinks': drinks
+        'drinks': new_drink.long()
     })
 
 
@@ -98,10 +111,28 @@ def create_drink():
 
 
 @app.route('/drinks/<id>', methods=['PATCH'])
-def edit_drink(id):
+@requires_auth("patch:drinks")
+def edit_drink(*args, **kwargs):
+    id = kwargs['id']
+
+    update_drink = Drink.query.filter_by(id=id).one_or_none()
+    if update_drink is None:
+        abort(404)
+
+    body = request.get_json()
+    if 'title' in body:
+        update_drink.title = body['title']
+    if 'recipe' in body:
+        update_drink.recipe = json.dumps(body['recipe'])
+    try:
+        update_drink.insert()
+    except Exception as e:
+        abort(400)
+
+    drink = [update_drink.long()]
     return jsonify({
         'success': True,
-        # 'drinks': drinks
+        'drinks': drink
     })
 
 
@@ -118,7 +149,18 @@ def edit_drink(id):
 
 
 @app.route('/drinks/<id>', methods=['Delete'])
-def delete_drink(id):
+@requires_auth("delete:drinks")
+def delete_drink(*args, **kwargs):
+    id = kwargs['id']
+
+    delete_drink = Drink.query.filter_by(id=id).one_or_none()
+    if delete_drink is None:
+        abort(404)
+    try:
+        delete_drink.delete()
+    except Exception as e:
+        abort(500)
+
     return jsonify({
         'success': True,
         'deleted': id,
@@ -160,6 +202,7 @@ def not_found(error):
         "message": "resource not found"
 
     }), 404
+
 
 '''
 @TODO implement error handler for 404
