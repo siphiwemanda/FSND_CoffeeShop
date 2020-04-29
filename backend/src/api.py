@@ -16,6 +16,8 @@ CORS(app)
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
+
+
 # db_drop_and_create_all()
 
 ## ROUTES
@@ -45,7 +47,6 @@ def get_drinks_details(jwt):
         'success': True,
         'drinks': drink_long
     })
-
 
 
 @app.route('/drinks', methods=['POST'])
@@ -85,7 +86,7 @@ def edit_drink(*args, **kwargs):
     try:
         update_drink.insert()
     except Exception as e:
-        abort(400)
+        abort(422)
 
     drink = [update_drink.long()]
     return jsonify({
@@ -98,14 +99,13 @@ def edit_drink(*args, **kwargs):
 @requires_auth("delete:drinks")
 def delete_drink(*args, **kwargs):
     id = kwargs['id']
-
-    delete_drink = Drink.query.filter_by(id=id).one_or_none()
-    if delete_drink is None:
+    remove_drink = Drink.query.filter_by(id=id).one_or_none()
+    if remove_drink is None:
         abort(404)
     try:
-        delete_drink.delete()
+        remove_drink.delete()
     except Exception as e:
-        abort(500)
+        abort(422)
 
     return jsonify({
         'success': True,
@@ -148,15 +148,6 @@ def method_not_allowed(error):
         "error": 405,
         "message": "Method not allowed"
     }), 405
-
-
-@app.errorhandler(401)
-def unauthorized(error):
-    return jsonify({
-        "success": False,
-        "error": 401,
-        "message": "Unauthorized"
-    }), 401
 
 
 @app.errorhandler(AuthError)
